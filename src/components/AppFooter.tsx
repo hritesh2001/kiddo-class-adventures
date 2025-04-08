@@ -2,9 +2,12 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Heart, Mail, MessageCircle, Star, Music, Gamepad } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const AppFooter: React.FC = () => {
   const currentYear = new Date().getFullYear();
+  const isMobile = useIsMobile();
   
   return (
     <footer className="bg-gradient-to-r from-kiddo-blue to-kiddo-purple text-white py-6">
@@ -33,13 +36,16 @@ export const AppFooter: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <motion.a 
-              href="#" 
-              className="hover:underline flex items-center gap-1 hover:text-kiddo-yellow transition-colors"
+            <motion.div 
               whileHover={{ scale: 1.1 }}
             >
-              <Mail size={16} /> Contact
-            </motion.a>
+              <Link
+                to="/contact" 
+                className="hover:underline flex items-center gap-1 hover:text-kiddo-yellow transition-colors"
+              >
+                <Mail size={16} /> Contact
+              </Link>
+            </motion.div>
             <motion.a 
               href="#" 
               className="hover:underline flex items-center gap-1 hover:text-kiddo-yellow transition-colors"
@@ -47,13 +53,16 @@ export const AppFooter: React.FC = () => {
             >
               <MessageCircle size={16} /> Help
             </motion.a>
-            <motion.a 
-              href="#" 
-              className="hover:underline flex items-center gap-1 hover:text-kiddo-yellow transition-colors"
+            <motion.div
               whileHover={{ scale: 1.1 }}
             >
-              <Heart size={16} /> About
-            </motion.a>
+              <Link
+                to="/about" 
+                className="hover:underline flex items-center gap-1 hover:text-kiddo-yellow transition-colors"
+              >
+                <Heart size={16} /> About
+              </Link>
+            </motion.div>
           </motion.div>
         </div>
         
@@ -82,7 +91,7 @@ export const AppFooter: React.FC = () => {
                 repeat: Infinity 
               }}
             >
-              <Icon size={20} />
+              <Icon size={isMobile ? 16 : 20} />
             </motion.div>
           ))}
         </motion.div>
