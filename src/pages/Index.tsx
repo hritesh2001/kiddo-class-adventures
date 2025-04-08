@@ -5,9 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 
-// Adding framer-motion for animations
-<lov-add-dependency>framer-motion@latest</lov-add-dependency>
-
 const Index = () => {
   return (
     <AppLayout>

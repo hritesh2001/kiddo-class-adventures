@@ -1,11 +1,18 @@
 
 import React from "react";
 import { Link } from "react-router-dom";
-import { Home, Menu, X } from "lucide-react";
+import { Home, Menu, X, BookOpen, Users, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
 
 export const AppHeader: React.FC = () => {
   const [menuOpen, setMenuOpen] = React.useState(false);
+
+  const menuItems = [
+    { name: "Home", path: "/", icon: <Home size={18} /> },
+    { name: "Classes", path: "/classes", icon: <BookOpen size={18} /> },
+    { name: "About Us", path: "/about", icon: <Users size={18} /> },
+  ];
 
   return (
     <header className="bg-white shadow-md py-3 sticky top-0 z-50">
@@ -15,12 +22,21 @@ export const AppHeader: React.FC = () => {
           className="flex items-center space-x-2"
           onClick={() => setMenuOpen(false)}
         >
-          <div className="bg-kiddo-purple text-white p-2 rounded-full">
+          <motion.div 
+            className="bg-kiddo-purple text-white p-2 rounded-full"
+            whileHover={{ rotate: 10, scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
             <Home size={24} />
-          </div>
-          <span className="text-2xl font-bold bg-gradient-to-r from-kiddo-blue to-kiddo-purple text-transparent bg-clip-text">
+          </motion.div>
+          <motion.span 
+            className="text-2xl font-bold bg-gradient-to-r from-kiddo-blue to-kiddo-purple text-transparent bg-clip-text"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
             Kiddo Class Adventures
-          </span>
+          </motion.span>
         </Link>
 
         {/* Mobile Menu Button */}
@@ -34,37 +50,52 @@ export const AppHeader: React.FC = () => {
         </Button>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-4">
-          <Link to="/" className="font-semibold hover:text-kiddo-blue transition-colors">
-            Home
-          </Link>
-          <Link to="/about" className="font-semibold hover:text-kiddo-blue transition-colors">
-            About
-          </Link>
-          <Button className="bg-kiddo-yellow text-kiddo-dark hover:bg-yellow-400 transition-colors">
-            Login
-          </Button>
+        <nav className="hidden md:flex items-center space-x-6">
+          {menuItems.map((item, index) => (
+            <motion.div
+              key={item.path}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 * index }}
+            >
+              <Link 
+                to={item.path} 
+                className="font-semibold hover:text-kiddo-blue transition-colors flex items-center gap-2"
+              >
+                {item.icon}
+                {item.name}
+              </Link>
+            </motion.div>
+          ))}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            <Button className="bg-kiddo-yellow text-kiddo-dark hover:bg-yellow-400 transition-colors">
+              <Award className="mr-2" size={18} />
+              Login
+            </Button>
+          </motion.div>
         </nav>
 
         {/* Mobile Navigation */}
         {menuOpen && (
           <div className="absolute top-full left-0 right-0 bg-white shadow-md p-4 md:hidden animate-fade-in">
             <nav className="flex flex-col space-y-3">
-              <Link 
-                to="/" 
-                className="font-semibold hover:text-kiddo-blue transition-colors p-2"
-                onClick={() => setMenuOpen(false)}
-              >
-                Home
-              </Link>
-              <Link 
-                to="/about" 
-                className="font-semibold hover:text-kiddo-blue transition-colors p-2"
-                onClick={() => setMenuOpen(false)}
-              >
-                About
-              </Link>
+              {menuItems.map((item) => (
+                <Link 
+                  key={item.path}
+                  to={item.path} 
+                  className="font-semibold hover:text-kiddo-blue transition-colors p-2 flex items-center gap-2"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {item.icon}
+                  {item.name}
+                </Link>
+              ))}
               <Button className="bg-kiddo-yellow text-kiddo-dark hover:bg-yellow-400 transition-colors">
+                <Award className="mr-2" size={18} />
                 Login
               </Button>
             </nav>
