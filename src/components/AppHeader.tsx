@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Link } from "react-router-dom";
-import { Home, Menu, X, BookOpen, Users, Award } from "lucide-react";
+import { Home, Menu, X, BookOpen, Users, Award, GraduationCap, Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
@@ -23,11 +23,19 @@ export const AppHeader: React.FC = () => {
           onClick={() => setMenuOpen(false)}
         >
           <motion.div 
-            className="bg-kiddo-purple text-white p-2 rounded-full"
+            className="bg-gradient-to-r from-kiddo-purple to-kiddo-blue text-white p-2 rounded-full"
             whileHover={{ rotate: 10, scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
+            animate={{ 
+              rotate: [0, 5, 0, -5, 0],
+            }}
+            transition={{ 
+              duration: 5, 
+              repeat: Infinity,
+              repeatType: "reverse"
+            }}
           >
-            <Home size={24} />
+            <GraduationCap size={24} />
           </motion.div>
           <motion.span 
             className="text-2xl font-bold bg-gradient-to-r from-kiddo-blue to-kiddo-purple text-transparent bg-clip-text"
@@ -60,8 +68,13 @@ export const AppHeader: React.FC = () => {
             >
               <Link 
                 to={item.path} 
-                className="font-semibold hover:text-kiddo-blue transition-colors flex items-center gap-2"
+                className="font-semibold hover:text-kiddo-blue transition-colors flex items-center gap-2 relative group"
               >
+                <motion.span 
+                  className="absolute bottom-0 left-0 w-0 h-0.5 bg-kiddo-blue"
+                  whileHover={{ width: "100%" }}
+                  transition={{ duration: 0.3 }}
+                />
                 {item.icon}
                 {item.name}
               </Link>
@@ -72,8 +85,14 @@ export const AppHeader: React.FC = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.4 }}
           >
-            <Button className="bg-kiddo-yellow text-kiddo-dark hover:bg-yellow-400 transition-colors">
-              <Award className="mr-2" size={18} />
+            <Button className="bg-kiddo-yellow text-kiddo-dark hover:bg-yellow-400 transition-colors group">
+              <motion.div
+                whileHover={{ rotate: 360 }}
+                transition={{ duration: 0.5 }}
+                className="inline-block mr-2"
+              >
+                <Smile size={18} />
+              </motion.div>
               Login
             </Button>
           </motion.div>
@@ -90,12 +109,17 @@ export const AppHeader: React.FC = () => {
                   className="font-semibold hover:text-kiddo-blue transition-colors p-2 flex items-center gap-2"
                   onClick={() => setMenuOpen(false)}
                 >
-                  {item.icon}
+                  <motion.div
+                    whileHover={{ rotate: 10 }}
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    {item.icon}
+                  </motion.div>
                   {item.name}
                 </Link>
               ))}
               <Button className="bg-kiddo-yellow text-kiddo-dark hover:bg-yellow-400 transition-colors">
-                <Award className="mr-2" size={18} />
+                <Smile className="mr-2" size={18} />
                 Login
               </Button>
             </nav>
