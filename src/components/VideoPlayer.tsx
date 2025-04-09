@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Plyr from 'plyr';
 import 'plyr/dist/plyr.css';
+import { toast } from 'sonner';
 
 type VideoPlayerProps = {
   src: string;
@@ -20,7 +21,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const playerRef = useRef<Plyr | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const sourceRef = useRef<string>(src); // Track current source
   
   // Function to determine video type from source URL
   const getVideoType = (url: string): string => {
@@ -31,13 +31,21 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return 'video/mp4';
   };
 
-  // Initialize player
+  // Create player instance
   useEffect(() => {
-    // Only initialize if video ref exists and player doesn't
-    if (!videoRef.current || playerRef.current) return;
+    if (!videoRef.current) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    // Clean up any existing player
+    if (playerRef.current) {
+      playerRef.current.destroy();
+      playerRef.current = null;
+    }
     
     try {
-      // Create player instance
+      // Create new player instance
       const player = new Plyr(videoRef.current, {
         controls: [
           'play-large', 'play', 'progress', 'current-time', 'mute',
@@ -76,104 +84,85 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         }
       });
       
-      // Setup error handler for video element
-      const errorHandler = () => {
-        setError('Unable to load video. Please check your connection and try again.');
-        setIsLoading(false);
-      };
-      
-      videoRef.current.addEventListener('error', errorHandler);
-      
-      // Cleanup
-      return () => {
-        if (videoRef.current) {
-          videoRef.current.removeEventListener('error', errorHandler);
-        }
-        
-        if (playerRef.current) {
-          try {
-            playerRef.current.destroy();
-            playerRef.current = null;
-          } catch (err) {
-            console.error('Error destroying player:', err);
-          }
-        }
-      };
+      // Force the video to load
+      if (videoRef.current) {
+        videoRef.current.load();
+      }
     } catch (err) {
       console.error('Error initializing Plyr:', err);
       setError('Could not initialize video player');
       setIsLoading(false);
-      return undefined;
     }
-  }, []); // Empty dependency array - only run once on mount
-
-  // Handle src changes
-  useEffect(() => {
-    // Skip if source hasn't changed
-    if (src === sourceRef.current) return;
     
-    setIsLoading(true);
-    setError(null);
-    sourceRef.current = src;
-    
-    if (!videoRef.current) return;
-    
-    const handleLoad = () => {
-      setIsLoading(false);
-      
+    // Cleanup function
+    return () => {
       if (playerRef.current) {
         try {
-          // This will safely play the video, handling autoplay restrictions
-          const playPromise = playerRef.current.play();
-          if (playPromise && typeof playPromise.catch === 'function') {
-            playPromise.catch(err => {
-              console.log('Autoplay prevented by browser', err);
-            });
-          }
+          playerRef.current.destroy();
+          playerRef.current = null;
         } catch (err) {
-          console.error('Error playing after source change:', err);
+          console.error('Error destroying player:', err);
         }
       }
     };
+  }, [src, onProgress]); // Recreate player when source changes
+
+  // Handle source changes
+  useEffect(() => {
+    if (!videoRef.current || !playerRef.current) return;
     
-    // Let React handle the source update through props
-    videoRef.current.addEventListener('loadedmetadata', handleLoad, { once: true });
+    const handleMetadataLoaded = () => {
+      setIsLoading(false);
+    };
     
-    // Force the video to load the new source
-    videoRef.current.load();
+    videoRef.current.addEventListener('loadedmetadata', handleMetadataLoaded, { once: true });
     
     return () => {
       if (videoRef.current) {
-        videoRef.current.removeEventListener('loadedmetadata', handleLoad);
+        videoRef.current.removeEventListener('loadedmetadata', handleMetadataLoaded);
       }
     };
   }, [src]);
 
   // Handle retrying playback after error
   const handleRetry = () => {
-    if (!videoRef.current) return;
-    
     setError(null);
     setIsLoading(true);
     
-    videoRef.current.load();
+    // Re-initialize the player
+    if (playerRef.current) {
+      playerRef.current.destroy();
+      playerRef.current = null;
+    }
     
+    // Force a small delay before attempting to reinitialize
     setTimeout(() => {
-      if (playerRef.current) {
-        try {
-          const playPromise = playerRef.current.play();
-          if (playPromise && typeof playPromise.catch === 'function') {
-            playPromise.catch(err => {
-              console.error('Error on retry:', err);
-              setError('Failed to play video after retry.');
+      if (!videoRef.current) return;
+      
+      try {
+        const player = new Plyr(videoRef.current, {
+          controls: [
+            'play-large', 'play', 'progress', 'current-time', 'mute',
+            'volume', 'captions', 'settings', 'pip', 'fullscreen'
+          ]
+        });
+        
+        playerRef.current = player;
+        videoRef.current.load();
+        
+        player.on('ready', () => {
+          setIsLoading(false);
+          player.play()
+            .catch(err => {
+              console.error('Error on retry play:', err);
             });
-          }
-        } catch (err) {
-          console.error('Error on retry:', err);
-          setError('Failed to play video after retry.');
-        }
+        });
+      } catch (err) {
+        console.error('Error on retry:', err);
+        setError('Failed to play video after retry.');
+        setIsLoading(false);
       }
-    }, 100);
+    }, 300);
   };
 
   return (
