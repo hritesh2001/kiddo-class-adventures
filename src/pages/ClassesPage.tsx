@@ -100,7 +100,7 @@ const ClassesPage = () => {
                 <Link to={`/classes/${classItem.id}`}>
                   <div className={`kiddo-card border-kiddo-${classItem.color} overflow-hidden`}>
                     <div className={`bg-kiddo-${classItem.color} h-24 flex items-center justify-center`}>
-                      <span className="text-4xl font-bold text-white">Class {classItem.id}</span>
+                      <span className="text-4xl font-bold text-white">{classItem.name}</span>
                     </div>
                     <div className="p-6">
                       <h3 className="text-xl font-bold mb-2">{classItem.name}</h3>
