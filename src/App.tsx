@@ -14,6 +14,14 @@ import ContactPage from "./pages/ContactPage";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./components/AuthProvider";
 
+// Admin pages
+import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
+import AdminClassesPage from "./pages/admin/AdminClassesPage";
+import AdminSubjectsPage from "./pages/admin/AdminSubjectsPage";
+import AdminChaptersPage from "./pages/admin/AdminChaptersPage";
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
+import AdminProfilePage from "./pages/admin/AdminProfilePage";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -32,6 +40,15 @@ const App = () => (
             <Route path="/classes/:classId/subjects/:subjectId/chapters/:chapterId" element={<ChapterDetailPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            
+            {/* Admin Routes */}
+            <Route path="/admin" element={<AdminDashboardPage />} />
+            <Route path="/admin/classes" element={<AdminClassesPage />} />
+            <Route path="/admin/subjects" element={<AdminSubjectsPage />} />
+            <Route path="/admin/chapters" element={<AdminChaptersPage />} />
+            <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/admin/profile" element={<AdminProfilePage />} />
+            
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -11,7 +11,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Settings } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export const UserMenu = () => {
   const { user, signOut } = useAuth();
@@ -46,6 +47,12 @@ export const UserMenu = () => {
               </div>
             </div>
             <DropdownMenuSeparator />
+            <Link to="/admin">
+              <DropdownMenuItem className="cursor-pointer flex items-center gap-2">
+                <Settings size={16} />
+                <span>Admin Panel</span>
+              </DropdownMenuItem>
+            </Link>
             <DropdownMenuItem 
               className="cursor-pointer flex items-center gap-2 text-red-600"
               onClick={handleSignOut}
