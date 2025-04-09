@@ -5,8 +5,39 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+
+// Define Types
+type Class = {
+  id: number;
+  name: string;
+  description: string;
+  color: string;
+}
+
+const fetchClasses = async (): Promise<Class[]> => {
+  const { data, error } = await supabase
+    .from('classes')
+    .select('*')
+    .order('id');
+  
+  if (error) {
+    console.error("Error fetching classes:", error);
+    throw new Error(error.message);
+  }
+  
+  return data || [];
+};
 
 const ClassesPage = () => {
+  const { data: classes, isLoading, error } = useQuery({
+    queryKey: ['classes'],
+    queryFn: fetchClasses,
+  });
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -25,6 +56,15 @@ const ClassesPage = () => {
       opacity: 1
     }
   };
+
+  // Show error toast if there's an error
+  React.useEffect(() => {
+    if (error) {
+      toast.error("Failed to load classes", {
+        description: "Please try again later"
+      });
+    }
+  }, [error]);
 
   return (
     <AppLayout>
@@ -46,52 +86,52 @@ const ClassesPage = () => {
           initial="hidden"
           animate="visible"
         >
-          {[1, 2, 3, 4, 5, 6].map((classNum) => (
-            <motion.div key={classNum} variants={itemVariants}>
-              <Link to={`/classes/${classNum}`}>
-                <div className={`kiddo-card border-kiddo-${getClassColor(classNum)} overflow-hidden`}>
-                  <div className={`bg-kiddo-${getClassColor(classNum)} h-24 flex items-center justify-center`}>
-                    <span className="text-4xl font-bold text-white">Class {classNum}</span>
-                  </div>
-                  <div className="p-6">
-                    <h3 className="text-xl font-bold mb-2">Primary {classNum}</h3>
-                    <p className="text-gray-600 mb-4">
-                      {getClassDescription(classNum)}
-                    </p>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-semibold">6 Subjects</span>
-                      <span className={`text-kiddo-${getClassColor(classNum)} font-bold`}>
-                        Start Learning →
-                      </span>
+          {isLoading ? (
+            // Skeleton loading UI
+            Array.from({ length: 6 }).map((_, index) => (
+              <div key={`skeleton-${index}`} className="kiddo-card">
+                <Skeleton className="h-24 w-full mb-4" />
+                <Skeleton className="h-6 w-3/4 mb-2" />
+                <Skeleton className="h-16 w-full mb-2" />
+                <div className="flex justify-between">
+                  <Skeleton className="h-4 w-1/4" />
+                  <Skeleton className="h-4 w-1/3" />
+                </div>
+              </div>
+            ))
+          ) : classes && classes.length > 0 ? (
+            classes.map((classItem) => (
+              <motion.div key={classItem.id} variants={itemVariants}>
+                <Link to={`/classes/${classItem.id}`}>
+                  <div className={`kiddo-card border-kiddo-${classItem.color} overflow-hidden`}>
+                    <div className={`bg-kiddo-${classItem.color} h-24 flex items-center justify-center`}>
+                      <span className="text-4xl font-bold text-white">Class {classItem.id}</span>
+                    </div>
+                    <div className="p-6">
+                      <h3 className="text-xl font-bold mb-2">{classItem.name}</h3>
+                      <p className="text-gray-600 mb-4">
+                        {classItem.description}
+                      </p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-semibold">6 Subjects</span>
+                        <span className={`text-kiddo-${classItem.color} font-bold`}>
+                          Start Learning →
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
+                </Link>
+              </motion.div>
+            ))
+          ) : (
+            <div className="col-span-3 text-center py-10">
+              <p className="text-gray-500">No classes found</p>
+            </div>
+          )}
         </motion.div>
       </div>
     </AppLayout>
   );
 };
-
-// Helper function to get color based on class number
-function getClassColor(classNum: number): string {
-  const colors = ["blue", "yellow", "purple", "green", "pink", "orange"];
-  return colors[(classNum - 1) % colors.length];
-}
-
-// Helper function to get description based on class number
-function getClassDescription(classNum: number): string {
-  const descriptions = [
-    "Foundation year with basics in reading, writing, and numbers.",
-    "Building literacy skills and exploring math concepts.",
-    "Developing reading comprehension and mathematical operations.",
-    "Expanding knowledge in languages, math, and science.",
-    "Deepening understanding across all core subjects.",
-    "Advanced concepts preparing for secondary education."
-  ];
-  return descriptions[classNum - 1];
-}
 
 export default ClassesPage;

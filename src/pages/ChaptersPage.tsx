@@ -1,4 +1,3 @@
-
 import React from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { Link, useParams } from "react-router-dom";
@@ -6,13 +5,109 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Check, Lock } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+
+type Chapter = {
+  id: number;
+  title: string;
+  description: string | null;
+  order_number: number;
+  subject_id: number;
+}
+
+type Subject = {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+  chapters_count: number;
+  class_id: number;
+}
+
+type UserProgress = {
+  chapter_id: number;
+  progress: number;
+  completed: boolean;
+}
+
+const fetchChapters = async (subjectId: number): Promise<Chapter[]> => {
+  const { data, error } = await supabase
+    .from('chapters')
+    .select('*')
+    .eq('subject_id', subjectId)
+    .order('order_number');
+  
+  if (error) {
+    console.error("Error fetching chapters:", error);
+    throw new Error(error.message);
+  }
+  
+  return data || [];
+};
+
+const fetchSubject = async (subjectId: number): Promise<Subject | null> => {
+  const { data, error } = await supabase
+    .from('subjects')
+    .select('*')
+    .eq('id', subjectId)
+    .single();
+  
+  if (error) {
+    console.error("Error fetching subject:", error);
+    throw new Error(error.message);
+  }
+  
+  return data;
+};
+
+const fetchUserProgress = async (chapters: number[]): Promise<UserProgress[]> => {
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) return [];
+  
+  const { data, error } = await supabase
+    .from('user_progress')
+    .select('*')
+    .in('chapter_id', chapters);
+  
+  if (error) {
+    console.error("Error fetching user progress:", error);
+    return [];
+  }
+  
+  return data || [];
+};
 
 const ChaptersPage = () => {
   const { classId, subjectId } = useParams<{ classId: string; subjectId: string }>();
-  const classNum = parseInt(classId || "1");
+  const classIdNum = parseInt(classId || "1");
+  const subjectIdNum = parseInt(subjectId || "1");
   
-  // Get subject info based on subjectId
-  const subject = getSubjectInfo(subjectId || "");
+  const { data: chapters, isLoading: chaptersLoading, error: chaptersError } = useQuery({
+    queryKey: ['chapters', subjectIdNum],
+    queryFn: () => fetchChapters(subjectIdNum),
+  });
+
+  const { data: subject, isLoading: subjectLoading } = useQuery({
+    queryKey: ['subject', subjectIdNum],
+    queryFn: () => fetchSubject(subjectIdNum),
+  });
+  
+  const { data: userProgress = [] } = useQuery({
+    queryKey: ['userProgress', chapters?.map(c => c.id)],
+    queryFn: () => chapters ? fetchUserProgress(chapters.map(c => c.id)) : Promise.resolve([]),
+    enabled: !!chapters && chapters.length > 0,
+  });
+  
+  const overallProgress = React.useMemo(() => {
+    if (!chapters || chapters.length === 0) return 0;
+    if (userProgress.length === 0) return 0;
+    
+    const totalProgress = userProgress.reduce((sum, up) => sum + up.progress, 0);
+    return Math.round(totalProgress / chapters.length);
+  }, [chapters, userProgress]);
   
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -33,14 +128,38 @@ const ChaptersPage = () => {
     }
   };
 
-  // Mocked chapter data
-  const chapters = Array.from({ length: subject.chapters }, (_, i) => ({
-    id: i + 1,
-    title: `Chapter ${i + 1}: ${getChapterTitle(subject.id, i + 1)}`,
-    completed: i < 2, // First two chapters are completed
-    locked: i > 3, // Chapters after the 4th are locked
-    progress: i < 2 ? 100 : i === 2 ? 60 : i === 3 ? 20 : 0
-  }));
+  React.useEffect(() => {
+    if (chaptersError) {
+      toast.error("Failed to load chapters", {
+        description: "Please try again later"
+      });
+    }
+  }, [chaptersError]);
+
+  const processedChapters = React.useMemo(() => {
+    if (!chapters) return [];
+    
+    const progressMap = new Map();
+    userProgress.forEach(up => {
+      progressMap.set(up.chapter_id, { 
+        progress: up.progress,
+        completed: up.completed
+      });
+    });
+    
+    return chapters.map((chapter, index) => {
+      const progress = progressMap.get(chapter.id) || { progress: 0, completed: false };
+      const locked = index > 0 && 
+        (index > 1 && !progressMap.get(chapters[index - 1]?.id)?.completed);
+      
+      return {
+        ...chapter,
+        completed: progress.completed,
+        locked,
+        progress: progress.progress
+      };
+    });
+  }, [chapters, userProgress]);
 
   return (
     <AppLayout>
@@ -53,23 +172,33 @@ const ChaptersPage = () => {
         </Link>
 
         <div className="text-center mb-8">
-          <div className={`inline-block rounded-full mb-4 p-4 bg-kiddo-${subject.color}`}>
-            {getSubjectIcon(subject.icon)}
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold mb-2">
-            {subject.name}
-          </h1>
-          <p className="text-gray-600">
-            Class {classNum} • {subject.chapters} Chapters
-          </p>
-          
-          <div className="max-w-md mx-auto mt-4">
-            <div className="flex justify-between text-sm mb-1">
-              <span>Your Progress</span>
-              <span className="font-semibold">25%</span>
+          {subjectLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-16 w-16 rounded-full mx-auto" />
+              <Skeleton className="h-8 w-48 mx-auto" />
+              <Skeleton className="h-4 w-32 mx-auto" />
             </div>
-            <Progress value={25} className="h-3" />
-          </div>
+          ) : subject && (
+            <>
+              <div className={`inline-block rounded-full mb-4 p-4 bg-kiddo-${subject.color}`}>
+                {getSubjectIcon(subject.icon)}
+              </div>
+              <h1 className="text-3xl md:text-4xl font-bold mb-2">
+                {subject.name}
+              </h1>
+              <p className="text-gray-600">
+                Class {classIdNum} • {subject.chapters_count} Chapters
+              </p>
+              
+              <div className="max-w-md mx-auto mt-4">
+                <div className="flex justify-between text-sm mb-1">
+                  <span>Your Progress</span>
+                  <span className="font-semibold">{overallProgress}%</span>
+                </div>
+                <Progress value={overallProgress} className="h-3" />
+              </div>
+            </>
+          )}
         </div>
 
         <motion.div 
@@ -78,166 +207,68 @@ const ChaptersPage = () => {
           initial="hidden"
           animate="visible"
         >
-          {chapters.map((chapter) => (
-            <motion.div 
-              key={chapter.id} 
-              variants={itemVariants}
-              className="mb-4"
-            >
-              <Link to={chapter.locked ? "#" : `/classes/${classId}/subjects/${subjectId}/chapters/${chapter.id}`}>
-                <div className={`bg-white rounded-2xl border-2 ${chapter.locked ? 'border-gray-200' : `border-kiddo-${subject.color}`} p-4 flex items-center justify-between hover:shadow-md transition-shadow ${chapter.locked ? 'opacity-70' : ''}`}>
-                  <div className="flex items-center">
-                    <div className={`w-12 h-12 rounded-full ${chapter.locked ? 'bg-gray-200' : chapter.completed ? `bg-kiddo-${subject.color}` : 'bg-gray-100'} flex items-center justify-center mr-4`}>
-                      {chapter.locked ? (
-                        <Lock size={20} className="text-gray-500" />
-                      ) : chapter.completed ? (
-                        <Check size={20} className="text-white" />
-                      ) : (
-                        <span className="text-lg font-bold text-gray-500">{chapter.id}</span>
-                      )}
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-lg">{chapter.title}</h3>
-                      <div className="mt-1">
+          {chaptersLoading ? (
+            Array.from({ length: 5 }).map((_, index) => (
+              <div key={`skeleton-${index}`} className="mb-4">
+                <Skeleton className="h-24 w-full rounded-2xl" />
+              </div>
+            ))
+          ) : processedChapters.length > 0 ? (
+            processedChapters.map((chapter) => (
+              <motion.div 
+                key={chapter.id} 
+                variants={itemVariants}
+                className="mb-4"
+              >
+                <Link to={chapter.locked ? "#" : `/classes/${classId}/subjects/${subjectId}/chapters/${chapter.id}`}>
+                  <div className={`bg-white rounded-2xl border-2 ${chapter.locked ? 'border-gray-200' : `border-kiddo-${subject?.color || 'blue'}`} p-4 flex items-center justify-between hover:shadow-md transition-shadow ${chapter.locked ? 'opacity-70' : ''}`}>
+                    <div className="flex items-center">
+                      <div className={`w-12 h-12 rounded-full ${chapter.locked ? 'bg-gray-200' : chapter.completed ? `bg-kiddo-${subject?.color || 'blue'}` : 'bg-gray-100'} flex items-center justify-center mr-4`}>
                         {chapter.locked ? (
-                          <span className="text-sm text-gray-500">Complete previous chapters to unlock</span>
+                          <Lock size={20} className="text-gray-500" />
+                        ) : chapter.completed ? (
+                          <Check size={20} className="text-white" />
                         ) : (
-                          <div>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span>{chapter.completed ? 'Completed' : 'In Progress'}</span>
-                              <span className="font-semibold">{chapter.progress}%</span>
-                            </div>
-                            <Progress value={chapter.progress} className="h-2 w-48" />
-                          </div>
+                          <span className="text-lg font-bold text-gray-500">{chapter.order_number}</span>
                         )}
                       </div>
+                      <div>
+                        <h3 className="font-bold text-lg">{chapter.title}</h3>
+                        <div className="mt-1">
+                          {chapter.locked ? (
+                            <span className="text-sm text-gray-500">Complete previous chapters to unlock</span>
+                          ) : (
+                            <div>
+                              <div className="flex justify-between text-sm mb-1">
+                                <span>{chapter.completed ? 'Completed' : 'In Progress'}</span>
+                                <span className="font-semibold">{chapter.progress}%</span>
+                              </div>
+                              <Progress value={chapter.progress} className="h-2 w-48" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
+                    {!chapter.locked && (
+                      <Button className={`bg-kiddo-${subject?.color || 'blue'} hover:bg-opacity-90`}>
+                        {chapter.completed ? 'Review' : 'Continue'}
+                      </Button>
+                    )}
                   </div>
-                  {!chapter.locked && (
-                    <Button className={`bg-kiddo-${subject.color} hover:bg-opacity-90`}>
-                      {chapter.completed ? 'Review' : 'Continue'}
-                    </Button>
-                  )}
-                </div>
-              </Link>
-            </motion.div>
-          ))}
+                </Link>
+              </motion.div>
+            ))
+          ) : (
+            <div className="text-center py-10">
+              <p className="text-gray-500">No chapters found for this subject</p>
+            </div>
+          )}
         </motion.div>
       </div>
     </AppLayout>
   );
 };
 
-// Helper function to get subject information
-function getSubjectInfo(subjectId: string) {
-  const subjects = {
-    "math": {
-      id: "math",
-      name: "Mathematics",
-      icon: "calculator",
-      color: "blue",
-      chapters: 8
-    },
-    "english": {
-      id: "english",
-      name: "English",
-      icon: "book",
-      color: "yellow",
-      chapters: 10
-    },
-    "science": {
-      id: "science",
-      name: "Science",
-      icon: "flask",
-      color: "green",
-      chapters: 6
-    },
-    "social": {
-      id: "social",
-      name: "Social Studies",
-      icon: "globe",
-      color: "purple",
-      chapters: 5
-    },
-    "arts": {
-      id: "arts",
-      name: "Arts & Crafts",
-      icon: "palette",
-      color: "pink",
-      chapters: 4
-    },
-    "computer": {
-      id: "computer",
-      name: "Computer",
-      icon: "monitor",
-      color: "teal",
-      chapters: 5
-    }
-  };
-  
-  return subjects[subjectId as keyof typeof subjects] || subjects.math;
-}
-
-// Helper function to get chapter titles based on subject
-function getChapterTitle(subjectId: string, chapterNum: number): string {
-  const titles: Record<string, string[]> = {
-    "math": [
-      "Numbers and Counting",
-      "Addition and Subtraction",
-      "Shapes and Patterns",
-      "Measurement",
-      "Time and Money",
-      "Multiplication Basics",
-      "Division Basics",
-      "Fractions Introduction"
-    ],
-    "english": [
-      "Alphabet and Phonics",
-      "Word Recognition",
-      "Simple Sentences",
-      "Reading Comprehension",
-      "Storytelling",
-      "Grammar Basics",
-      "Writing Skills",
-      "Poetry and Rhymes",
-      "Speaking Skills",
-      "Listening Skills"
-    ],
-    "science": [
-      "Living Things",
-      "Plants and Animals",
-      "Human Body",
-      "Materials and Matter",
-      "Earth and Space",
-      "Forces and Energy"
-    ],
-    "social": [
-      "My Family",
-      "Our Community",
-      "Our Country",
-      "World Around Us",
-      "History and Culture"
-    ],
-    "arts": [
-      "Colors and Painting",
-      "Drawing and Sketching",
-      "Crafts and Creations",
-      "Music and Rhythm"
-    ],
-    "computer": [
-      "Introduction to Computers",
-      "Keyboard and Mouse",
-      "Basic Software",
-      "Internet Safety",
-      "Digital Art"
-    ]
-  };
-  
-  const subjectTitles = titles[subjectId] || titles.math;
-  return subjectTitles[chapterNum - 1] || `Learning Module ${chapterNum}`;
-}
-
-// Helper function to render subject icons
 function getSubjectIcon(iconName: string): JSX.Element {
   const iconStyle = "w-10 h-10 text-white";
   

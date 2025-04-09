@@ -5,10 +5,71 @@ import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+
+// Define Types
+type Subject = {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+  chapters_count: number;
+  class_id: number;
+}
+
+type Class = {
+  id: number;
+  name: string;
+  description: string;
+  color: string;
+}
+
+const fetchSubjects = async (classId: number): Promise<Subject[]> => {
+  const { data, error } = await supabase
+    .from('subjects')
+    .select('*')
+    .eq('class_id', classId)
+    .order('id');
+  
+  if (error) {
+    console.error("Error fetching subjects:", error);
+    throw new Error(error.message);
+  }
+  
+  return data || [];
+};
+
+const fetchClass = async (classId: number): Promise<Class | null> => {
+  const { data, error } = await supabase
+    .from('classes')
+    .select('*')
+    .eq('id', classId)
+    .single();
+  
+  if (error) {
+    console.error("Error fetching class:", error);
+    throw new Error(error.message);
+  }
+  
+  return data;
+};
 
 const SubjectsPage = () => {
   const { classId } = useParams<{ classId: string }>();
-  const classNum = parseInt(classId || "1");
+  const classIdNum = parseInt(classId || "1");
+
+  const { data: subjects, isLoading: subjectsLoading, error: subjectsError } = useQuery({
+    queryKey: ['subjects', classIdNum],
+    queryFn: () => fetchSubjects(classIdNum),
+  });
+
+  const { data: classInfo, isLoading: classLoading } = useQuery({
+    queryKey: ['class', classIdNum],
+    queryFn: () => fetchClass(classIdNum),
+  });
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -29,50 +90,14 @@ const SubjectsPage = () => {
     }
   };
 
-  const subjects = [
-    {
-      id: "math",
-      name: "Mathematics",
-      icon: "calculator",
-      color: "blue",
-      chapters: 8
-    },
-    {
-      id: "english",
-      name: "English",
-      icon: "book",
-      color: "yellow",
-      chapters: 10
-    },
-    {
-      id: "science",
-      name: "Science",
-      icon: "flask",
-      color: "green",
-      chapters: 6
-    },
-    {
-      id: "social",
-      name: "Social Studies",
-      icon: "globe",
-      color: "purple",
-      chapters: 5
-    },
-    {
-      id: "arts",
-      name: "Arts & Crafts",
-      icon: "palette",
-      color: "pink",
-      chapters: 4
-    },
-    {
-      id: "computer",
-      name: "Computer",
-      icon: "monitor",
-      color: "teal",
-      chapters: 5
+  // Show error toast if there's an error
+  React.useEffect(() => {
+    if (subjectsError) {
+      toast.error("Failed to load subjects", {
+        description: "Please try again later"
+      });
     }
-  ];
+  }, [subjectsError]);
 
   return (
     <AppLayout>
@@ -86,7 +111,11 @@ const SubjectsPage = () => {
 
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-bold mb-2">
-            Class {classNum} Subjects
+            {classLoading ? (
+              <Skeleton className="h-10 w-48 mx-auto" />
+            ) : (
+              `${classInfo?.name || `Class ${classIdNum}`} Subjects`
+            )}
           </h1>
           <p className="text-gray-600">
             Select a subject to explore chapters and start learning
@@ -99,31 +128,46 @@ const SubjectsPage = () => {
           initial="hidden"
           animate="visible"
         >
-          {subjects.map((subject) => (
-            <motion.div key={subject.id} variants={itemVariants}>
-              <Link to={`/classes/${classNum}/subjects/${subject.id}`}>
-                <div className={`kiddo-card border-kiddo-${subject.color} overflow-hidden h-full`}>
-                  <div className={`bg-kiddo-${subject.color} p-8 flex flex-col items-center justify-center`}>
-                    {getSubjectIcon(subject.icon)}
-                    <h3 className="text-xl font-bold text-white mt-3">{subject.name}</h3>
-                  </div>
-                  <div className="p-6">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold">{subject.chapters} Chapters</span>
-                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                        <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">
-                          20%
+          {subjectsLoading ? (
+            // Skeleton loading UI
+            Array.from({ length: 6 }).map((_, index) => (
+              <div key={`skeleton-${index}`} className="kiddo-card">
+                <Skeleton className="h-32 w-full mb-4" />
+                <Skeleton className="h-6 w-full mb-2" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))
+          ) : subjects && subjects.length > 0 ? (
+            subjects.map((subject) => (
+              <motion.div key={subject.id} variants={itemVariants}>
+                <Link to={`/classes/${classIdNum}/subjects/${subject.id}`}>
+                  <div className={`kiddo-card border-kiddo-${subject.color} overflow-hidden h-full`}>
+                    <div className={`bg-kiddo-${subject.color} p-8 flex flex-col items-center justify-center`}>
+                      {getSubjectIcon(subject.icon)}
+                      <h3 className="text-xl font-bold text-white mt-3">{subject.name}</h3>
+                    </div>
+                    <div className="p-6">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold">{subject.chapters_count} Chapters</span>
+                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                          <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">
+                            20%
+                          </div>
                         </div>
                       </div>
+                      <Button className={`w-full mt-4 bg-kiddo-${subject.color} hover:bg-opacity-90`}>
+                        Start Learning
+                      </Button>
                     </div>
-                    <Button className={`w-full mt-4 bg-kiddo-${subject.color} hover:bg-opacity-90`}>
-                      Start Learning
-                    </Button>
                   </div>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
+                </Link>
+              </motion.div>
+            ))
+          ) : (
+            <div className="col-span-3 text-center py-10">
+              <p className="text-gray-500">No subjects found for this class</p>
+            </div>
+          )}
         </motion.div>
       </div>
     </AppLayout>

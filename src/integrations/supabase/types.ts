@@ -9,7 +9,144 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      chapters: {
+        Row: {
+          content: string | null
+          created_at: string
+          description: string | null
+          id: number
+          order_number: number
+          subject_id: number
+          title: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          description?: string | null
+          id?: number
+          order_number: number
+          subject_id: number
+          title: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          description?: string | null
+          id?: number
+          order_number?: number
+          subject_id?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapters_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classes: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          id: number
+          name: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          description?: string | null
+          id?: number
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: number
+          name?: string
+        }
+        Relationships: []
+      }
+      subjects: {
+        Row: {
+          chapters_count: number | null
+          class_id: number
+          color: string
+          created_at: string
+          icon: string
+          id: number
+          name: string
+        }
+        Insert: {
+          chapters_count?: number | null
+          class_id: number
+          color: string
+          created_at?: string
+          icon: string
+          id?: number
+          name: string
+        }
+        Update: {
+          chapters_count?: number | null
+          class_id?: number
+          color?: string
+          created_at?: string
+          icon?: string
+          id?: number
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subjects_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_progress: {
+        Row: {
+          chapter_id: number
+          completed: boolean
+          created_at: string
+          id: string
+          last_accessed: string
+          progress: number
+          user_id: string
+        }
+        Insert: {
+          chapter_id: number
+          completed?: boolean
+          created_at?: string
+          id?: string
+          last_accessed?: string
+          progress?: number
+          user_id: string
+        }
+        Update: {
+          chapter_id?: number
+          completed?: boolean
+          created_at?: string
+          id?: string
+          last_accessed?: string
+          progress?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_progress_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

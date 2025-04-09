@@ -12,29 +12,31 @@ import ChapterDetailPage from "./pages/ChapterDetailPage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import NotFound from "./pages/NotFound";
-import { AppLayout } from "./components/AppLayout";
+import { AuthProvider } from "./components/AuthProvider";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <BrowserRouter>
-        <Toaster />
-        <Sonner />
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/classes" element={<ClassesPage />} />
-          <Route path="/classes/:classId" element={<SubjectsPage />} />
-          <Route path="/classes/:classId/subjects" element={<SubjectsPage />} />
-          <Route path="/classes/:classId/subjects/:subjectId" element={<ChaptersPage />} />
-          <Route path="/classes/:classId/subjects/:subjectId/chapters/:chapterId" element={<ChapterDetailPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <Toaster />
+          <Sonner />
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/classes" element={<ClassesPage />} />
+            <Route path="/classes/:classId" element={<SubjectsPage />} />
+            <Route path="/classes/:classId/subjects" element={<SubjectsPage />} />
+            <Route path="/classes/:classId/subjects/:subjectId" element={<ChaptersPage />} />
+            <Route path="/classes/:classId/subjects/:subjectId/chapters/:chapterId" element={<ChapterDetailPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
