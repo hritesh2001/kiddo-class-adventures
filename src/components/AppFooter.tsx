@@ -46,13 +46,16 @@ export const AppFooter: React.FC = () => {
                 <Mail size={16} /> Contact
               </Link>
             </motion.div>
-            <motion.a 
-              href="#" 
-              className="hover:underline flex items-center gap-1 hover:text-kiddo-yellow transition-colors"
+            <motion.div 
               whileHover={{ scale: 1.1 }}
             >
-              <MessageCircle size={16} /> Help
-            </motion.a>
+              <Link
+                to="#" 
+                className="hover:underline flex items-center gap-1 hover:text-kiddo-yellow transition-colors"
+              >
+                <MessageCircle size={16} /> Help
+              </Link>
+            </motion.div>
             <motion.div
               whileHover={{ scale: 1.1 }}
             >
