@@ -152,10 +152,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         
         player.on('ready', () => {
           setIsLoading(false);
-          player.play()
-            .catch(err => {
+          // Fix for TypeScript error by handling the potential void return type
+          const playPromise = player.play();
+          // Only call catch if it's actually a Promise
+          if (playPromise instanceof Promise) {
+            playPromise.catch(err => {
               console.error('Error on retry play:', err);
             });
+          }
         });
       } catch (err) {
         console.error('Error on retry:', err);
