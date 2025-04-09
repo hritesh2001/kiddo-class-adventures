@@ -30,7 +30,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return 'video/mp4';
   };
 
-  // Clean up function for the player
+  // Clean up and destroy player
   const destroyPlayer = () => {
     if (playerRef.current) {
       try {
@@ -42,118 +42,135 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  // Create player instance only once on mount
+  // Initialize player once on mount, clean up on unmount
   useEffect(() => {
-    return () => {
-      destroyPlayer();
-    };
-  }, []);
+    const initializePlayer = () => {
+      if (!videoRef.current || playerRef.current) return;
+      
+      try {
+        // Create player instance
+        const player = new Plyr(videoRef.current, {
+          controls: [
+            'play-large', 'play', 'progress', 'current-time', 'mute',
+            'volume', 'captions', 'settings', 'pip', 'fullscreen'
+          ],
+          settings: ['captions', 'quality', 'speed'],
+          resetOnEnd: true,
+          invertTime: false,
+          toggleInvert: true,
+          keyboard: { focused: true, global: true },
+          tooltips: { controls: true, seek: true },
+          captions: { active: true, language: 'auto', update: true }
+        });
 
-  // Initialize player when video element is ready
-  useEffect(() => {
-    if (!videoRef.current || playerRef.current) return;
+        playerRef.current = player;
 
-    try {
-      const player = new Plyr(videoRef.current, {
-        controls: [
-          'play-large', 'play', 'progress', 'current-time', 'mute',
-          'volume', 'captions', 'settings', 'pip', 'fullscreen'
-        ],
-        settings: ['captions', 'quality', 'speed'],
-        resetOnEnd: true,
-        invertTime: false,
-        toggleInvert: true,
-        keyboard: { focused: true, global: true },
-        tooltips: { controls: true, seek: true },
-        captions: { active: true, language: 'auto', update: true }
-      });
+        // Handle player events
+        player.on('ready', () => {
+          setIsLoading(false);
+          console.log('Plyr is ready');
+        });
 
-      playerRef.current = player;
+        player.on('error', (event) => {
+          console.error('Plyr error:', event);
+          setError('Error playing video. Please try again later.');
+        });
 
-      // Handle player events
-      player.on('ready', () => {
+        // Progress tracking
+        player.on('timeupdate', () => {
+          if (!onProgress || !player.duration) return;
+          
+          const progress = Math.floor((player.currentTime / player.duration) * 100);
+          if (progress > 0) {
+            onProgress(progress);
+          }
+        });
+      } catch (err) {
+        console.error('Error initializing Plyr:', err);
+        setError('Could not initialize video player');
         setIsLoading(false);
-        console.log('Plyr is ready');
-      });
+      }
+    };
 
-      player.on('error', (event) => {
-        console.error('Plyr error:', event);
-        setError('Error playing video. Please try again later.');
-      });
-
-      // Progress tracking
-      player.on('timeupdate', () => {
-        if (!onProgress || !player.duration) return;
-        
-        const progress = Math.floor((player.currentTime / player.duration) * 100);
-        if (progress > 0) {
-          onProgress(progress);
-        }
-      });
-
-      // Setup one-time error handler for the video element
-      const videoErrorHandler = () => {
+    // Set up error handling for video element
+    const setupVideoErrorHandler = () => {
+      if (!videoRef.current) return;
+      
+      const errorHandler = () => {
         setError('Unable to load video. Please check your connection and try again.');
         setIsLoading(false);
       };
       
-      videoRef.current.addEventListener('error', videoErrorHandler, { once: true });
+      videoRef.current.addEventListener('error', errorHandler, { once: true });
       
       return () => {
         if (videoRef.current) {
-          videoRef.current.removeEventListener('error', videoErrorHandler);
+          videoRef.current.removeEventListener('error', errorHandler);
         }
       };
-    } catch (err) {
-      console.error('Error initializing Plyr:', err);
-      setError('Could not initialize video player');
-      setIsLoading(false);
-    }
+    };
+
+    // Initialize player
+    initializePlayer();
+    const cleanupErrorHandler = setupVideoErrorHandler();
+    
+    // Cleanup on unmount
+    return () => {
+      destroyPlayer();
+      if (cleanupErrorHandler) cleanupErrorHandler();
+    };
   }, [onProgress]);
 
-  // Handle src changes without destroying the player
+  // Handle src changes - completely rebuild the video element to avoid DOM issues
   useEffect(() => {
     if (!videoRef.current || !src) return;
     
     setIsLoading(true);
     setError(null);
     
-    // Update video source directly
-    if (videoRef.current) {
-      // Create or update source element
-      const sourceElement = videoRef.current.querySelector('source') || document.createElement('source');
-      sourceElement.setAttribute('src', src);
-      sourceElement.setAttribute('type', getVideoType(src));
-      
-      // Ensure source is in the video element
-      if (!videoRef.current.contains(sourceElement)) {
-        videoRef.current.appendChild(sourceElement);
-      }
-      
-      // Reset video element
-      videoRef.current.load();
-      
-      // If player exists, we need to reset it
-      if (playerRef.current) {
-        videoRef.current.onloadeddata = () => {
-          setIsLoading(false);
-          
-          // This timeout ensures DOM operations complete before Plyr manipulates anything
-          setTimeout(() => {
-            if (playerRef.current) {
-              try {
-                playerRef.current.play().catch(() => {
-                  // Auto-play was prevented, this is normal
-                  console.log('Autoplay prevented by browser');
-                });
-              } catch (e) {
-                console.error('Error playing video after source change:', e);
-              }
-            }
-          }, 0);
-        };
-      }
+    // Update video source
+    const videoElement = videoRef.current;
+    
+    // Clear all existing sources first
+    while (videoElement.firstChild) {
+      videoElement.removeChild(videoElement.firstChild);
     }
+    
+    // Create and append new source element
+    const sourceElement = document.createElement('source');
+    sourceElement.src = src;
+    sourceElement.type = getVideoType(src);
+    videoElement.appendChild(sourceElement);
+    
+    // Reset the video
+    videoElement.load();
+    
+    // Handle when metadata is loaded
+    const handleMetadataLoaded = () => {
+      setIsLoading(false);
+      
+      // Try to play video if player exists
+      if (playerRef.current) {
+        try {
+          const playPromise = playerRef.current.play();
+          // Only add .catch if it's a Promise
+          if (playPromise && typeof playPromise.catch === 'function') {
+            playPromise.catch(() => {
+              // Auto-play was prevented, this is normal
+              console.log('Autoplay prevented by browser');
+            });
+          }
+        } catch (e) {
+          console.error('Error playing video after source change:', e);
+        }
+      }
+    };
+    
+    videoElement.addEventListener('loadedmetadata', handleMetadataLoaded, { once: true });
+    
+    return () => {
+      videoElement.removeEventListener('loadedmetadata', handleMetadataLoaded);
+    };
   }, [src]);
 
   const handleRetry = () => {
@@ -163,13 +180,21 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (videoRef.current) {
       videoRef.current.load();
       
-      // Give the browser a moment to begin loading before we start playing
       setTimeout(() => {
         if (playerRef.current) {
-          playerRef.current.play().catch(err => {
+          try {
+            const playPromise = playerRef.current.play();
+            // Only add .catch if it's a Promise
+            if (playPromise && typeof playPromise.catch === 'function') {
+              playPromise.catch(err => {
+                console.error('Error on retry:', err);
+                setError('Failed to play video after retry.');
+              });
+            }
+          } catch (err) {
             console.error('Error on retry:', err);
             setError('Failed to play video after retry.');
-          });
+          }
         }
       }, 100);
     }
