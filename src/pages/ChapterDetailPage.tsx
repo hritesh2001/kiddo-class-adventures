@@ -1,4 +1,3 @@
-
 import React from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { Link, useParams } from "react-router-dom";
@@ -206,6 +205,14 @@ const ChapterDetailPage = () => {
     });
   };
   
+  // Track video progress
+  const handleVideoProgress = (progress: number) => {
+    // Only update if the progress is significant (e.g., every 10%)
+    if (progress % 10 === 0 && userProgress && progress > (userProgress.progress || 0)) {
+      handleProgressUpdate(progress);
+    }
+  };
+  
   // Generate videos based on chapter and subject
   const videos = React.useMemo(() => {
     if (!subject || !chapter) return [];
@@ -290,6 +297,8 @@ const ChapterDetailPage = () => {
                     <VideoPlayer 
                       src={selectedVideo.videoUrl} 
                       poster={selectedVideo.thumbnail}
+                      title={selectedVideo.title}
+                      onProgress={handleVideoProgress}
                     />
                   )}
                   
