@@ -12,31 +12,12 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Database } from "@/integrations/supabase/types";
 
 // Define Types
-type Chapter = {
-  id: number;
-  title: string;
-  description: string | null;
-  content: string | null;
-  order_number: number;
-  subject_id: number;
-}
-
-type Subject = {
-  id: number;
-  name: string;
-  icon: string;
-  color: string;
-  class_id: number;
-}
-
-type UserProgress = {
-  chapter_id: number;
-  progress: number;
-  completed: boolean;
-  id?: string;
-}
+type Chapter = Database['public']['Tables']['chapters']['Row'];
+type Subject = Database['public']['Tables']['subjects']['Row'];
+type UserProgress = Database['public']['Tables']['user_progress']['Row'];
 
 // Mock data for videos (in a real app, this would come from a database)
 const getChapterVideos = (subjectName: string, chapterId: number, chapterTitle: string) => {
@@ -117,7 +98,15 @@ const fetchUserProgress = async (chapterId: number): Promise<UserProgress | null
   return data;
 };
 
-const updateUserProgress = async ({ chapterId, progress, completed }: UserProgress) => {
+const updateUserProgress = async ({ 
+  chapter_id, 
+  progress, 
+  completed 
+}: { 
+  chapter_id: number;
+  progress: number;
+  completed: boolean;
+}) => {
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session) throw new Error("User not authenticated");
   
@@ -127,7 +116,7 @@ const updateUserProgress = async ({ chapterId, progress, completed }: UserProgre
   const { data: existingProgress } = await supabase
     .from('user_progress')
     .select('id')
-    .eq('chapter_id', chapterId)
+    .eq('chapter_id', chapter_id)
     .eq('user_id', userId)
     .maybeSingle();
   
@@ -151,7 +140,7 @@ const updateUserProgress = async ({ chapterId, progress, completed }: UserProgre
     const { data, error } = await supabase
       .from('user_progress')
       .insert({
-        chapter_id: chapterId,
+        chapter_id,
         user_id: userId,
         progress,
         completed,
@@ -242,16 +231,14 @@ const ChapterDetailPage = () => {
   }, [chapterError]);
   
   const downloadVideo = () => {
-    toast({
-      title: "Download started",
-      description: "Your video is being downloaded...",
+    toast("Download started", {
+      description: "Your video is being downloaded..."
     });
   };
   
   const shareContent = () => {
-    toast({
-      title: "Share",
-      description: "Sharing functionality will be implemented soon!",
+    toast("Share", {
+      description: "Sharing functionality will be implemented soon!"
     });
   };
   

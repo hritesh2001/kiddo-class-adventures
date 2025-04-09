@@ -1,4 +1,3 @@
-
 import React from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { Link } from "react-router-dom";
@@ -9,14 +8,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { Database } from "@/integrations/supabase/types";
 
 // Define Types
-type Class = {
-  id: number;
-  name: string;
-  description: string;
-  color: string;
-}
+type Class = Database['public']['Tables']['classes']['Row'];
 
 const fetchClasses = async (): Promise<Class[]> => {
   const { data, error } = await supabase

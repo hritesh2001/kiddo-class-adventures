@@ -1,4 +1,3 @@
-
 import React from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { Link, useParams } from "react-router-dom";
@@ -9,23 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { Database } from "@/integrations/supabase/types";
 
 // Define Types
-type Subject = {
-  id: number;
-  name: string;
-  icon: string;
-  color: string;
-  chapters_count: number;
-  class_id: number;
-}
-
-type Class = {
-  id: number;
-  name: string;
-  description: string;
-  color: string;
-}
+type Subject = Database['public']['Tables']['subjects']['Row'];
+type Class = Database['public']['Tables']['classes']['Row'];
 
 const fetchSubjects = async (classId: number): Promise<Subject[]> => {
   const { data, error } = await supabase
@@ -189,7 +176,7 @@ function getSubjectIcon(iconName: string): JSX.Element {
       );
     case "flask":
       return (
-        <svg xmlns="http://www.w3.org/2000/svg" className={iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h6v2H9zM8 3h8l-1 6.5.5.5-5 8v.5h-.5l-.5-.5-1-1 5-8 .5-.5L8 3z" /><path d="M6.5 20A3.5 3.5 0 0 1 3 16.5v-.74A5 5 0 0 1 4.5 11l.5-2 5 8H8.5L7 14l3 4H6.5zM17.5 20a3.5 3.5 0 0 0 3.5-3.5v-.74A5 5 0 0 0 19.5 11l-.5-2-5 8h1.5l1.5-3-3 4h3.5z" /></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" className={iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h6v2H9zM8 3h8l-1 6.5.5.5-5 8v.5h-.5l-.5-.5-1-1 5-8 .5-.5L8 3z" /><path d="M6.5 20A3.5 3.5 0 0 1 3 16.5v-.74A5 5 0 0 0 4.5 11l.5-2 5 8H8.5L7 14l3 4H6.5zM17.5 20a3.5 3.5 0 0 0 3.5-3.5v-.74A5 5 0 0 0 19.5 11l-.5-2-5 8h1.5l1.5-3-3 4h3.5z" /></svg>
       );
     case "globe":
       return (
