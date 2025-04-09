@@ -17,79 +17,37 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onProgress 
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const playerRef = useRef<Plyr | null>(null);
+  const playerInstanceRef = useRef<Plyr | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
 
   // Clean up function to safely destroy the player instance
   const cleanupPlayer = () => {
-    if (playerRef.current) {
+    if (playerInstanceRef.current) {
       try {
-        playerRef.current.destroy();
+        playerInstanceRef.current.destroy();
       } catch (err) {
         console.error("Error destroying player:", err);
       }
-      playerRef.current = null;
+      playerInstanceRef.current = null;
     }
   };
 
-  // Initialize player only once when component mounts
+  // Initialize player on mount and clean up on unmount
   useEffect(() => {
     return () => {
       cleanupPlayer();
     };
   }, []);
 
-  // Handle source changes without recreating the entire player
+  // Setup the player and handle source changes
   useEffect(() => {
     if (!videoRef.current) return;
     setError(null);
 
-    // If player exists, update source instead of recreating
-    if (playerRef.current) {
+    // If we don't have a player yet, create one
+    if (!playerInstanceRef.current) {
       try {
-        // Update source by directly setting the video element's src
-        if (videoRef.current) {
-          const mediaElement = videoRef.current;
-          const sourceElements = mediaElement.querySelectorAll('source');
-          
-          // Remove existing sources
-          sourceElements.forEach(source => {
-            source.remove();
-          });
-          
-          // Create new source element
-          const newSource = document.createElement('source');
-          newSource.src = src;
-          newSource.type = src.endsWith('.webm') 
-            ? 'video/webm' 
-            : src.endsWith('.ogg')
-              ? 'video/ogg'
-              : 'video/mp4';
-          
-          // Append new source
-          mediaElement.appendChild(newSource);
-          
-          // Load the new source
-          mediaElement.load();
-          playerRef.current.source = {
-            type: 'video',
-            sources: [
-              {
-                src: src,
-                type: 'video/mp4',
-              },
-            ],
-          };
-        }
-      } catch (err) {
-        console.error("Error updating source:", err);
-        setError('Error updating video source');
-      }
-    } else {
-      // Initialize player if it doesn't exist
-      try {
-        playerRef.current = new Plyr(videoRef.current, {
+        playerInstanceRef.current = new Plyr(videoRef.current, {
           controls: [
             'play-large', 'play', 'progress', 'current-time', 'mute',
             'volume', 'captions', 'settings', 'pip', 'fullscreen'
@@ -103,14 +61,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           captions: { active: true, language: 'auto', update: true }
         });
 
-        if (playerRef.current) {
-          setIsInitialized(true);
-          
+        if (playerInstanceRef.current) {
           // Progress tracking
-          playerRef.current.on('timeupdate', () => {
-            if (!videoRef.current || !playerRef.current) return;
-            const duration = playerRef.current.duration || 1;
-            const currentTime = playerRef.current.currentTime || 0;
+          playerInstanceRef.current.on('timeupdate', () => {
+            if (!videoRef.current || !playerInstanceRef.current) return;
+            const duration = playerInstanceRef.current.duration || 1;
+            const currentTime = playerInstanceRef.current.currentTime || 0;
             const progress = Math.floor((currentTime / duration) * 100);
             
             if (onProgress && progress > 0) {
@@ -119,7 +75,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           });
 
           // Handle errors
-          playerRef.current.on('error', (event) => {
+          playerInstanceRef.current.on('error', (event) => {
             console.error('Plyr error:', event);
             setError('Error playing video. Please try again later.');
           });
@@ -129,7 +85,41 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         setError('Could not initialize video player');
       }
     }
-  }, [src, onProgress]);
+  }, [onProgress]);
+
+  // Handle source changes without recreating the player
+  useEffect(() => {
+    if (!videoRef.current || !src) return;
+    
+    // Simply update the video source without manipulating DOM elements
+    if (videoRef.current) {
+      videoRef.current.src = src;
+      videoRef.current.load();
+      
+      // If player exists, refresh it
+      if (playerInstanceRef.current) {
+        // Wait for the video to reload before forcing a refresh
+        videoRef.current.onloadeddata = () => {
+          if (playerInstanceRef.current) {
+            try {
+              playerInstanceRef.current.source = {
+                type: 'video',
+                sources: [
+                  {
+                    src: src,
+                    type: src.endsWith('.webm') ? 'video/webm' : 
+                          src.endsWith('.ogg') ? 'video/ogg' : 'video/mp4',
+                  },
+                ],
+              };
+            } catch (err) {
+              console.error("Error updating Plyr source:", err);
+            }
+          }
+        };
+      }
+    }
+  }, [src]);
 
   const handleVideoError = () => {
     setError('Unable to load video. Please check your connection and try again.');
@@ -144,10 +134,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             onClick={() => {
               setError(null);
-              window.location.reload();
+              if (videoRef.current) {
+                videoRef.current.load();
+              }
             }}
           >
-            Reload
+            Retry
           </button>
         </div>
       ) : (
@@ -161,9 +153,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             crossOrigin="anonymous"
             preload="metadata"
           >
-            <source src={src} type="video/mp4" />
-            {src.endsWith('.webm') && <source src={src} type="video/webm" />}
-            {src.endsWith('.ogg') && <source src={src} type="video/ogg" />}
+            <source src={src} type={src.endsWith('.webm') ? 'video/webm' : 
+                                   src.endsWith('.ogg') ? 'video/ogg' : 'video/mp4'} />
             Your browser does not support the video tag.
           </video>
         </div>
