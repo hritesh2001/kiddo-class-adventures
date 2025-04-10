@@ -22,6 +22,7 @@ import AdminSubjectsPage from "./pages/admin/AdminSubjectsPage";
 import AdminChaptersPage from "./pages/admin/AdminChaptersPage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminProfilePage from "./pages/admin/AdminProfilePage";
+import VideoPlayerPage from "./pages/VideoPlayerPage";
 
 // Create a new QueryClient instance inside the component
 const App = () => {
@@ -49,10 +50,11 @@ const App = () => {
                 <Route path="/classes/:classId" element={<SubjectsPage />} />
                 <Route path="/classes/:classId/subjects" element={<SubjectsPage />} />
                 <Route path="/classes/:classId/subjects/:subjectId" element={<ChaptersPage />} />
-                <Route path="/classes/:classId/subjects/:subjectId/chapters/:chapterId" element={<ChapterDetailPage />} />
+                {/* <Route path="/classes/:classId/subjects/:subjectId/chapters/:chapterId" element={<ChapterDetailPage />} /> */}
+                <Route path="/classes/:classId/subjects/:subjectId/chapters/:chapterId" element={<VideoPlayerPage />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/contact" element={<ContactPage />} />
-                
+
                 {/* Admin Routes */}
                 <Route path="/admin" element={<AdminDashboardPage />} />
                 <Route path="/admin/classes" element={<AdminClassesPage />} />
@@ -60,7 +62,7 @@ const App = () => {
                 <Route path="/admin/chapters" element={<AdminChaptersPage />} />
                 <Route path="/admin/users" element={<AdminUsersPage />} />
                 <Route path="/admin/profile" element={<AdminProfilePage />} />
-                
+
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
